@@ -38,10 +38,3 @@ Ao informar um filme, o sistema identifica seus gêneros e busca outros filmes c
 * O sistema depende de um conjunto de dados externo, que deve estar disponível localmente em formato `.zip`.
 * O código faz uso da função `ast.literal_eval` para interpretar corretamente os gêneros no formato de string.
 
-## 👨‍💻 Autor
-
-Este projeto foi desenvolvido com fins educacionais, como parte de um trabalho universitário.
-
----
-
-Se quiser, posso exportar isso como `.md` ou personalizar com seu nome, nome da universidade, ou título do projeto. Deseja que eu faça isso?
