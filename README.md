@@ -1,36 +1,106 @@
 
 # 🎬 Sistema de Recomendação de Filmes
 
-Este projeto é um sistema de recomendação de filmes desenvolvido com Python, utilizando bibliotecas como Pandas e Streamlit. A proposta é fornecer sugestões de filmes com base em um título ou gênero informado pelo usuário.
+Este projeto é um sistema de recomendação de filmes desenvolvido em Python, utilizando **Programação Orientada a Objetos (POO)**, **Pandas** e **Streamlit**.
+A proposta é fornecer sugestões de filmes com base em um título ou gênero informado pelo usuário, através de uma interface gráfica ou pelo terminal.
 
 ## 📦 Descrição
 
-O sistema utiliza dados do The Movie Database (TMDB), disponibilizados em um arquivo compactado `.zip`, contendo informações como título, gêneros e avaliação média dos filmes. O usuário pode interagir com uma interface gráfica para obter recomendações personalizadas.
+O sistema carrega dados do The Movie Database (TMDB), armazenados em um arquivo compactado `.zip` contendo o arquivo `movies_metadata.csv`.
+Com essas informações (título, gêneros e nota média), o programa cria objetos de filmes e aplica regras de recomendação.
+
+A arquitetura faz uso de:
+
+* **Herança e polimorfismo** (classes `Midia` e `Filme`);
+* **Encapsulamento** (atributos privados com `@property`);
+* **Interface abstrata** (`Recomendavel`) para padronizar os critérios de recomendação.
 
 ## 🚀 Funcionalidades
 
-* Recomendação baseada em um filme de referência
-* Recomendação baseada em um gênero cinematográfico
-* Ordenação por similaridade de gênero e nota média
-* Interface interativa feita com Streamlit
+* Recomendação baseada em um **filme de referência**
+* Recomendação baseada em um **gênero cinematográfico**
+* Ordenação por similaridade de gêneros e nota média
+* **Interface em Streamlit** para interação gráfica
+* **Interface em terminal** para execução via linha de comando
 
 ## 🧠 Como funciona
 
-Os dados são lidos a partir de arquivos `.csv` presentes em um arquivo `.zip`. A classe principal, chamada `Recomendador`, realiza o pré-processamento dos dados, convertendo os gêneros em listas legíveis e organizando os filmes conforme a similaridade e popularidade. O Streamlit permite que o usuário selecione o tipo de recomendação e visualize os resultados de forma simples e intuitiva.
+1. Os dados são carregados a partir de `movies_metadata.csv` (contido no `.zip`).
+2. Cada filme é instanciado como um objeto da classe `Filme`.
+3. O **RecomendadorFilmes** recebe a lista de filmes e aplica duas lógicas:
+
+   * **Por gênero:** retorna os melhores avaliados dentro da categoria.
+   * **Por filme:** busca outros títulos com gêneros semelhantes, ordenando pela proximidade e nota.
+4. O usuário pode interagir via **terminal** ou **Streamlit**.
 
 ## 📁 Estrutura do Projeto
 
-O projeto é composto por um único arquivo Python que concentra tanto a lógica do recomendador quanto a construção da interface. O conjunto de dados necessário deve estar em um arquivo `.zip`, com os arquivos esperados pelo sistema.
+```
+filmes.py               # Arquivo principal com toda a lógica
+archive.zip             # Arquivo com o dataset (movies_metadata.csv)
+```
+
+Principais componentes:
+
+* **Midia (classe abstrata):** modelo genérico de mídia.
+* **Filme (herda de Midia):** representa um filme com título, gêneros, nota e diretor.
+* **RecomendadorFilmes:** aplica as regras de recomendação.
+* **modo\_terminal:** interface de linha de comando.
+* **modo\_streamlit:** interface gráfica interativa.
 
 ## 🛠️ Instruções de Uso
 
-Para utilizar o sistema, é necessário ter o Python instalado e as bibliotecas Pandas e Streamlit. Após isso, basta executar o arquivo principal e interagir com a aplicação por meio da interface exibida no navegador. O usuário escolhe se deseja recomendações baseadas em um filme ou em um gênero e informa o número de sugestões desejadas.
+### Requisitos
+
+* Python 3.x
+* Bibliotecas: `pandas`, `streamlit`
+
+Instale os pacotes:
+
+```bash
+pip install pandas streamlit
+```
+
+### Execução
+
+* **Via Terminal:**
+
+```bash
+python filmes.py terminal
+```
+
+* **Via Streamlit:**
+
+```bash
+streamlit run filmes.py
+```
+
+⚠️ Certifique-se de ajustar o caminho do arquivo `.zip` em:
+
+```python
+zip_path = "C:/Users/pedro/OneDrive/Documentos/projeto eda/archive.zip"
+```
 
 ## 📝 Exemplo de Funcionamento
 
-Ao informar um filme, o sistema identifica seus gêneros e busca outros filmes com gêneros semelhantes, priorizando os mais bem avaliados. Se o usuário optar por buscar por gênero, o sistema retorna os filmes mais bem avaliados dentro da categoria escolhida.
+* **Por Filme:**
+  Entrada: `"Toy Story"`
+  Saída: lista de filmes com gêneros semelhantes, priorizando os mais bem avaliados.
+
+* **Por Gênero:**
+  Entrada: `"Action"`
+  Saída: os filmes de ação mais bem avaliados.
 
 ## 📌 Observações
+
+* O sistema depende de um dataset externo (`archive.zip`) com `movies_metadata.csv`.
+* O código usa `ast.literal_eval` para converter corretamente os gêneros em listas.
+* A arquitetura aplica princípios de **SOLID** em POO para modularidade e extensibilidade.
+
+---
+
+👉 Quer que eu também prepare uma versão **em inglês** do README (pra ficar pronto pro GitHub internacional) ou você prefere deixar só em português?
+
 
 * O sistema depende de um conjunto de dados externo, que deve estar disponível localmente em formato `.zip`.
 * O código faz uso da função `ast.literal_eval` para interpretar corretamente os gêneros no formato de string.
