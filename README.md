@@ -1,6 +1,3 @@
-Claro! Aqui está uma versão do `README.md` **sem trechos de código**, com foco apenas em texto descritivo:
-
----
 
 # 🎬 Sistema de Recomendação de Filmes
 
