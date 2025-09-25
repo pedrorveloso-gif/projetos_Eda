@@ -175,74 +175,122 @@ def recomendar_recursivo(midia_base: Midia, universo: List[Midia], profundidade:
 # =========================
 # 5) LOADERS (com cache)
 # =========================
-def _limpa_generos_tmdb(cell):
+def _read_any(path: str, sep_hint: str = "\t") -> pd.DataFrame:
+    """
+    Lê CSV/TSV (normal ou .gz) tentando opções seguras para pandas 2.x.
+    - Não usa mais error_bad_lines/warn_bad_lines (removidos).
+    - Evita conflito 'delimiter' x 'sep'.
+    - Faz inferência se precisar.
+    """
+    # 1) tenta como TSV explícito
     try:
-        lista = ast.literal_eval(cell)
-        return [d.get("name", "").strip() for d in lista if d.get("name")]
+        return pd.read_csv(
+            path,
+            sep=sep_hint,
+            low_memory=False,
+            encoding="utf-8",
+            na_values=["", "NA", "NaN", "\\N"],
+            on_bad_lines="skip"  # pandas 2.x
+        )
     except Exception:
-        return []
+        pass
+
+    # 2) tenta inferir separador (engine=python)
+    try:
+        return pd.read_csv(
+            path,
+            sep=None,              # infer
+            engine="python",
+            low_memory=False,
+            encoding="utf-8",
+            na_values=["", "NA", "NaN", "\\N"],
+            on_bad_lines="skip"
+        )
+    except Exception:
+        pass
+
+    # 3) tenta com gzip (se estiver compactado)
+    try:
+        return pd.read_csv(
+            path,
+            sep=sep_hint,
+            compression="infer",
+            low_memory=False,
+            encoding="utf-8",
+            na_values=["", "NA", "NaN", "\\N"],
+            on_bad_lines="skip"
+        )
+    except Exception as e:
+        raise RuntimeError(f"Falha ao ler arquivo '{path}': {e}")
 
 @st.cache_data(show_spinner=False)
 def carregar_filmes(filmes_path: str) -> List[Filme]:
-    df = pd.read_csv(filmes_path, low_memory=False)
-    cols = [c for c in ["title", "genres", "vote_average", "release_date"] if c in df.columns]
+    df = _read_any(filmes_path)  # <— usa o leitor robusto
+    cols = [c for c in ["title", "genres", "vote_average", "release_date", "director", "year"] if c in df.columns]
     df = df[cols].dropna(subset=["title", "genres"]).copy()
+
+    def _get_year(x):
+        try:
+            s = str(x)
+            if len(s) >= 4:
+                return int(s[:4])
+        except Exception:
+            pass
+        return None
+
     filmes: List[Filme] = []
     for _, row in df.iterrows():
         generos = _limpa_generos_tmdb(row["genres"])
-        year = None
-        if "release_date" in row and pd.notna(row["release_date"]) and str(row["release_date"]).strip():
-            year = str(row["release_date"])[:4]
-        filmes.append(Filme(row["title"], generos, row.get("vote_average", 0), year=year))
+        year = _get_year(row.get("release_date") or row.get("year"))
+        diretor = row.get("director") if "director" in df.columns else None
+        nota = row.get("vote_average", 0)
+        filmes.append(Filme(row["title"], generos, nota, diretor=diretor, year=year))
     return filmes
 
 @st.cache_data(show_spinner=False)
 def carregar_series(imdb_basics_path: str, imdb_ratings_path: str, min_votes: int = 500) -> List[Serie]:
-    basics = pd.read_csv(imdb_basics_path, sep="\t", low_memory=False, na_values="\\N")
-    ratings = pd.read_csv(imdb_ratings_path, sep="\t", low_memory=False, na_values="\\N")
-    
-    if "titleType" in basics.columns:
-        basics = basics[basics["titleType"].isin(["tvSeries", "tvMiniSeries"])].copy()
-    else:
-        st.warning("A coluna 'titleType' não foi encontrada. O aplicativo não consegue filtrar por séries.")
-        return []
+    basics = _read_any(imdb_basics_path)     # tipicamente TSV do IMDb
+    ratings = _read_any(imdb_ratings_path)   # idem
 
+    # Garante colunas esperadas
+    for c in ["tconst","primaryTitle","startYear","endYear","titleType","genres"]:
+        if c not in basics.columns:
+            raise ValueError(f"Coluna ausente em basics: {c}")
+    for c in ["tconst","averageRating","numVotes"]:
+        if c not in ratings.columns:
+            raise ValueError(f"Coluna ausente em ratings: {c}")
+
+    # Filtro só séries
+    basics = basics[basics["titleType"].isin(["tvSeries","tvMiniSeries"])].copy()
+
+    # Limpeza de anos e gêneros
+    basics["startYear"] = pd.to_numeric(basics["startYear"], errors="coerce")
+    basics["endYear"]   = pd.to_numeric(basics["endYear"], errors="coerce")
+    basics["genres"]    = basics["genres"].fillna("").replace("\\N", "").astype(str).apply(lambda s: [g.strip() for g in s.split(",") if g.strip()])
+
+    # Merge com notas e votos
     df = basics.merge(ratings, on="tconst", how="left")
-    
-    if "primaryTitle" in df.columns:
-        df["primaryTitle"] = df["primaryTitle"].astype(str)
-    
-    if "averageRating" in df.columns:
-        df["averageRating"] = pd.to_numeric(df["averageRating"], errors="coerce")
-    else:
-        df["averageRating"] = 0.0
+    df["averageRating"] = pd.to_numeric(df["averageRating"], errors="coerce")
+    df["numVotes"]      = pd.to_numeric(df["numVotes"], errors="coerce").fillna(0).astype("Int64")
 
-    if "numVotes" in df.columns:
-        df["numVotes"] = pd.to_numeric(df["numVotes"], errors="coerce")
-    else:
-        df["numVotes"] = 0
-
-    if "numVotes" in df.columns and min_votes and min_votes > 0:
-        df = df[df["numVotes"] >= min_votes]
-
-    def split_gen(gen):
-        if pd.isna(gen): return []
-        return [g.strip() for g in str(gen).split(",") if g and g.strip() != "\\N"]
+    # Filtro por mínimo de votos (evita coisa obscura)
+    df = df[df["numVotes"].fillna(0) >= min_votes].copy()
 
     series: List[Serie] = []
-    for _, r in df.iterrows():
+    for _, row in df.iterrows():
         series.append(
             Serie(
-                tconst=r.get("tconst"),
-                title=r.get("primaryTitle"),
-                genres=split_gen(r.get("genres")),
-                vote_average=r.get("averageRating", 0),
-                start_year=int(r.get("startYear")) if pd.notna(r.get("startYear")) else None,
-                end_year=int(r.get("endYear")) if pd.notna(r.get("endYear")) else None,
-                num_votes=r.get("numVotes"),
+                tconst=row["tconst"],
+                title=row["primaryTitle"],
+                genres=row["genres"],
+                vote_average=float(row["averageRating"]) if pd.notna(row["averageRating"]) else 0.0,
+                start_year=int(row["startYear"]) if pd.notna(row["startYear"]) else None,
+                end_year=int(row["endYear"]) if pd.notna(row["endYear"]) else None,
+                num_votes=int(row["numVotes"]) if pd.notna(row["numVotes"]) else None,
             )
         )
     return series
+
 
 def construir_grafo(filmes: List[Filme], series: List[Serie]) -> GenreGraph:
     G = GenreGraph()
@@ -394,4 +442,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
