@@ -46,7 +46,7 @@ class Filme(Midia):
 class Serie(Midia):
     def __init__(self, tconst, title, genres, vote_average, start_year=None, end_year=None, num_votes=None):
         super().__init__(title, genres, vote_average)
-        self_tconst = tconst
+        self._tconst = tconst
         self._start_year = start_year
         self._end_year = end_year
         self._num_votes = int(num_votes) if pd.notna(num_votes) else None
@@ -198,9 +198,8 @@ def carregar_filmes(filmes_path: str) -> List[Filme]:
 
 @st.cache_data(show_spinner=False)
 def carregar_series(imdb_basics_path: str, imdb_ratings_path: str, min_votes: int = 500) -> List[Serie]:
-    # A DICA FINAL: engine='python'
-    basics = pd.read_csv(imdb_basics_path, sep="\t", low_memory=False, na_values="\\N", engine='python')
-    ratings = pd.read_csv(imdb_ratings_path, sep="\t", low_memory=False, na_values="\\N", engine='python')
+    basics = pd.read_csv(imdb_basics_path, sep="\t", low_memory=False, na_values="\\N")
+    ratings = pd.read_csv(imdb_ratings_path, sep="\t", low_memory=False, na_values="\\N")
     
     if "titleType" in basics.columns:
         basics = basics[basics["titleType"].isin(["tvSeries", "tvMiniSeries"])].copy()
