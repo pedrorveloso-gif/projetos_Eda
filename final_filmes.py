@@ -4,7 +4,6 @@
 import streamlit as st
 import pandas as pd
 import ast
-import zipfile
 from abc import ABC, abstractmethod
 from typing import List, Union, Dict, Set, Tuple
 from collections import deque, defaultdict
@@ -186,9 +185,9 @@ def _limpa_generos_tmdb(cell):
         return []
 
 @st.cache_data(show_spinner=False)
-def carregar_filmes(zip_path: str) -> List[Filme]:
-    with zipfile.ZipFile(zip_path) as z:
-        df = pd.read_csv(z.open("movies_metadata.csv"), low_memory=False)
+def carregar_filmes(filmes_path: str) -> List[Filme]:
+    # **ALTERADO** - Agora lê o CSV diretamente, sem o ZipFile
+    df = pd.read_csv(filmes_path, low_memory=False)
     cols = [c for c in ["title", "genres", "vote_average", "release_date"] if c in df.columns]
     df = df[cols].dropna(subset=["title", "genres"]).copy()
     filmes: List[Filme] = []
@@ -241,7 +240,8 @@ def construir_grafo(filmes: List[Filme], series: List[Serie]) -> GenreGraph:
 # =========================
 # 6) CAMINHOS DOS DADOS
 # =========================
-ZIP_FILMES = "archive_min.zip"
+# **ALTERADO** - Agora aponta diretamente para o CSV descompactado
+FILMES_CSV = "movies_metadata.csv"
 IMDB_BASICS = "title.basics.min.tsv.gz"
 IMDB_RATINGS = "title.ratings.min.tsv.gz"
 
@@ -257,7 +257,8 @@ def main():
     )
 
     with st.spinner("Carregando dados..."):
-        filmes = carregar_filmes(ZIP_FILMES)
+        # **ALTERADO** - Chamada da função com o novo caminho
+        filmes = carregar_filmes(FILMES_CSV)
         series = carregar_series(IMDB_BASICS, IMDB_RATINGS, min_votes=500)
         grafo = construir_grafo(filmes, series)
 
@@ -292,14 +293,12 @@ def main():
 
             st.markdown("#### 📺 Séries parecidas (pelos mesmos gêneros)")
             cross = recomendar_por_bfs(grafo, alvo_filme.genres[0] if alvo_filme.genres else "Drama", series, n=min(5, n))
-            if cross: 
+            if cross:  
                 for c in cross: st.write(c.exibir_info())
             else:
                 st.caption("Sem séries com gêneros compatíveis.")
 
         else:
-            generos = sorted({g for m in filmes for g in m.genias if False})  # placeholder to avoid typo
-            # corrigindo o placeholder acima: gerar generos corretamente
             generos = sorted({g for m in filmes for g in m.genres})
             genero = st.selectbox("Escolha um gênero", generos, key="gen_filmes")
             modo_gen = st.radio("Como recomendar por gênero?", ["Simples", "Via BFS (grafo)"], key="modo_gen_filmes")
