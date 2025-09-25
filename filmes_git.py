@@ -198,14 +198,29 @@ def carregar_filmes(filmes_path: str) -> List[Filme]:
 
 @st.cache_data(show_spinner=False)
 def carregar_series(imdb_basics_path: str, imdb_ratings_path: str, min_votes: int = 500) -> List[Serie]:
-    # Corrigido: remove compression="infer" já que os arquivos não estão mais .gz
     basics = pd.read_csv(imdb_basics_path, sep="\t", low_memory=False, na_values="\\N")
     ratings = pd.read_csv(imdb_ratings_path, sep="\t", low_memory=False, na_values="\\N")
+    
+    # Merge the dataframes
     df = basics.merge(ratings, on="tconst", how="left")
-    df["primaryTitle"] = df["primaryTitle"].astype(str)
-    df["averageRating"] = pd.to_numeric(df["averageRating"], errors="coerce")
-    df["numVotes"] = pd.to_numeric(df["numVotes"], errors="coerce")
-    if min_votes and min_votes > 0:
+    
+    # Check if the columns exist before processing
+    if "primaryTitle" in df.columns:
+        df["primaryTitle"] = df["primaryTitle"].astype(str)
+    
+    if "averageRating" in df.columns:
+        df["averageRating"] = pd.to_numeric(df["averageRating"], errors="coerce")
+    else:
+        # Fallback to a default value if the column is missing to prevent the app from crashing.
+        df["averageRating"] = 0.0
+
+    if "numVotes" in df.columns:
+        df["numVotes"] = pd.to_numeric(df["numVotes"], errors="coerce")
+    else:
+        # Fallback to a default value if the column is missing.
+        df["numVotes"] = 0
+
+    if "numVotes" in df.columns and min_votes and min_votes > 0:
         df = df[df["numVotes"] >= min_votes]
 
     def split_gen(gen):
@@ -217,7 +232,7 @@ def carregar_series(imdb_basics_path: str, imdb_ratings_path: str, min_votes: in
         series.append(
             Serie(
                 tconst=r["tconst"],
-                title=r["primaryTitle"],
+                title=r.get("primaryTitle"),
                 genres=split_gen(r.get("genres")),
                 vote_average=r.get("averageRating", 0),
                 start_year=int(r["startYear"]) if pd.notna(r.get("startYear")) else None,
@@ -374,5 +389,6 @@ def main():
 if __name__ == "__main__":
 
     main()
+
 
 
