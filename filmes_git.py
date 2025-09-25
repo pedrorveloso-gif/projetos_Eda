@@ -239,9 +239,9 @@ def construir_grafo(filmes: List[Filme], series: List[Serie]) -> GenreGraph:
 # 6) CAMINHOS DOS DADOS
 # =========================
 # Ajustado para os nomes de arquivo que estão no seu repositório
-FILMES_CSV = "archive_min.csv"
-IMDB_BASICS = "title.basics.min.tsv"
-IMDB_RATINGS = "title.ratings.min.tsv"
+FILMES_CSV = "data/archive_min.csv"
+IMDB_BASICS = "data/title.basics.min.tsv"
+IMDB_RATINGS = "data/title.ratings.min.tsv"
 
 # =========================
 # 7) UI
@@ -373,4 +373,5 @@ def main():
                     st.warning("Nada encontrado para esse gênero nas séries.")
 
 if __name__ == "__main__":
+
     main()
