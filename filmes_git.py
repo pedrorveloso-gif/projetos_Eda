@@ -1,5 +1,5 @@
-# arquivo: app_recomendador.py
-# Para rodar: streamlit run app_recomendador.py
+# arquivo: filmes_git.py
+# Para rodar: streamlit run filmes_git.py
 
 import streamlit as st
 import pandas as pd
@@ -14,7 +14,7 @@ from collections import deque, defaultdict
 st.set_page_config(page_title="Recomendador de Filmes & Séries", layout="centered")
 
 # =========================
-# 1) MODELO DE DADOS (Herança, Polimorfismo, Encapsulamento)
+# 1) MODELO DE DADOS
 # =========================
 class Midia(ABC):
     def __init__(self, title: str, genres: List[str], vote_average: float):
@@ -198,15 +198,25 @@ def carregar_filmes(filmes_path: str) -> List[Filme]:
 
 @st.cache_data(show_spinner=False)
 def carregar_series(imdb_basics_path: str, imdb_ratings_path: str, min_votes: int = 500) -> List[Serie]:
-    # Corrigido: remove compression="infer" já que os arquivos não estão mais .gz
     basics = pd.read_csv(imdb_basics_path, sep="\t", low_memory=False, na_values="\\N")
     ratings = pd.read_csv(imdb_ratings_path, sep="\t", low_memory=False, na_values="\\N")
     basics = basics[basics["titleType"].isin(["tvSeries", "tvMiniSeries"])].copy()
     df = basics.merge(ratings, on="tconst", how="left")
-    df["primaryTitle"] = df["primaryTitle"].astype(str)
-    df["averageRating"] = pd.to_numeric(df["averageRating"], errors="coerce")
-    df["numVotes"] = pd.to_numeric(df["numVotes"], errors="coerce")
-    if min_votes and min_votes > 0:
+    
+    if "primaryTitle" in df.columns:
+        df["primaryTitle"] = df["primaryTitle"].astype(str)
+    
+    if "averageRating" in df.columns:
+        df["averageRating"] = pd.to_numeric(df["averageRating"], errors="coerce")
+    else:
+        df["averageRating"] = 0.0
+
+    if "numVotes" in df.columns:
+        df["numVotes"] = pd.to_numeric(df["numVotes"], errors="coerce")
+    else:
+        df["numVotes"] = 0
+
+    if "numVotes" in df.columns and min_votes and min_votes > 0:
         df = df[df["numVotes"] >= min_votes]
 
     def split_gen(gen):
@@ -217,18 +227,17 @@ def carregar_series(imdb_basics_path: str, imdb_ratings_path: str, min_votes: in
     for _, r in df.iterrows():
         series.append(
             Serie(
-                tconst=r["tconst"],
-                title=r["primaryTitle"],
+                tconst=r.get("tconst"),
+                title=r.get("primaryTitle"),
                 genres=split_gen(r.get("genres")),
                 vote_average=r.get("averageRating", 0),
-                start_year=int(r["startYear"]) if pd.notna(r.get("startYear")) else None,
-                end_year=int(r["endYear"]) if pd.notna(r.get("endYear")) else None,
+                start_year=int(r.get("startYear")) if pd.notna(r.get("startYear")) else None,
+                end_year=int(r.get("endYear")) if pd.notna(r.get("endYear")) else None,
                 num_votes=r.get("numVotes"),
             )
         )
     return series
 
-@st.cache_data(show_spinner=False)
 def construir_grafo(filmes: List[Filme], series: List[Serie]) -> GenreGraph:
     G = GenreGraph()
     for m in filmes + series:
@@ -238,10 +247,9 @@ def construir_grafo(filmes: List[Filme], series: List[Serie]) -> GenreGraph:
 # =========================
 # 6) CAMINHOS DOS DADOS
 # =========================
-# Ajustado para os nomes de arquivo que estão no seu repositório
-FILMES_CSV = "archive_min.csv"
-IMDB_BASICS = "title.basics.min.tsv"
-IMDB_RATINGS = "title.ratings.min.tsv"
+FILMES_CSV = "data/archive_min.csv"
+IMDB_BASICS = "data/title.basics.tsv" # CORRIGIDO: usa o arquivo completo
+IMDB_RATINGS = "data/title.ratings.min.tsv"
 
 # =========================
 # 7) UI
@@ -319,7 +327,7 @@ def main():
                 else:
                     st.warning("Nada encontrado para esse gênero nos filmes.")
 
-    else:  # Séries
+    else:
         rec_series = RecomendadorMidias(series)
 
         st.subheader("📺 Recomendações de Séries")
@@ -327,28 +335,33 @@ def main():
         n = st.slider("Quantidade", 1, 20, 5, key="n_series")
 
         if modo == "Por título":
-            titulos = sorted([s.title for s in series])
-            tit = st.selectbox("Escolha uma série", titulos, key="sel_serie")
-            alvo_serie = next(s for s in series if s.title == tit)
-
-            col1, col2 = st.columns(2)
-            if col1.button("Obter recomendações (simples)", key="btn_series_title"):
-                resultados = rec_series.recomendar(alvo_serie, n=n)
-                st.success(f"🎯 Baseado em: {alvo_serie.title}")
-                for r in resultados:
-                    st.write(r.exibir_info())
-
-            if col2.button("Explorar recursivo (2 níveis)", key="btn_series_rec"):
-                recs = recomendar_recursivo(alvo_serie, series, profundidade=2)
-                for r in recs[:n]:
-                    st.write(r.exibir_info())
-
-            st.markdown("#### 🎬 Filmes parecidos (pelos mesmos gêneros)")
-            cross = recomendar_por_bfs(grafo, alvo_serie.genres[0] if alvo_serie.genres else "Drama", filmes, n=min(5, n))
-            if cross:
-                for c in cross: st.write(c.exibir_info())
+            if series:
+                titulos = sorted([s.title for s in series])
+                tit = st.selectbox("Escolha uma série", titulos, key="sel_serie")
+                alvo_serie = next((s for s in series if s.title == tit), None)
             else:
-                st.caption("Sem filmes com gêneros compatíveis.")
+                st.warning("Não há séries para exibir.")
+                alvo_serie = None
+
+            if alvo_serie:
+                col1, col2 = st.columns(2)
+                if col1.button("Obter recomendações (simples)", key="btn_series_title"):
+                    resultados = rec_series.recomendar(alvo_serie, n=n)
+                    st.success(f"🎯 Baseado em: {alvo_serie.title}")
+                    for r in resultados:
+                        st.write(r.exibir_info())
+
+                if col2.button("Explorar recursivo (2 níveis)", key="btn_series_rec"):
+                    recs = recomendar_recursivo(alvo_serie, series, profundidade=2)
+                    for r in recs[:n]:
+                        st.write(r.exibir_info())
+                
+                st.markdown("#### 🎬 Filmes parecidos (pelos mesmos gêneros)")
+                cross = recomendar_por_bfs(grafo, alvo_serie.genres[0] if alvo_serie.genres else "Drama", filmes, n=min(5, n))
+                if cross:
+                    for c in cross: st.write(c.exibir_info())
+                else:
+                    st.caption("Sem filmes com gêneros compatíveis.")
 
         else:
             generos = sorted({g for s in series for g in s.genres})
