@@ -197,11 +197,13 @@ def _limpa_generos_tmdb(cell):
     except Exception:
         return []
 
-def carregar_filmes(zip_path: str) -> List[Filme]:
-    with zipfile.ZipFile(zip_path) as z:
-        df = pd.read_csv(z.open("movies_metadata.csv"), low_memory=False)
+@st.cache_data(show_spinner=False)
+def carregar_filmes(filmes_path: str) -> List[Filme]:
+    df = pd.read_csv(filmes_path, low_memory=False)
+    
     cols = [c for c in ["title", "genres", "vote_average", "release_date"] if c in df.columns]
     df = df[cols].dropna(subset=["title", "genres"]).copy()
+    
     filmes: List[Filme] = []
     for _, row in df.iterrows():
         generos = _limpa_generos_tmdb(row["genres"])
@@ -209,6 +211,7 @@ def carregar_filmes(zip_path: str) -> List[Filme]:
         if "release_date" in row and pd.notna(row["release_date"]) and str(row["release_date"]).strip():
             year = str(row["release_date"])[:4]
         filmes.append(Filme(row["title"], generos, row.get("vote_average", 0), year=year))
+        
     return filmes
 
 def carregar_series(imdb_basics_path: str, imdb_ratings_path: str, min_votes: int = 500) -> List[Serie]:
@@ -385,5 +388,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
