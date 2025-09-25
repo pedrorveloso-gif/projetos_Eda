@@ -201,16 +201,10 @@ def carregar_series(imdb_basics_path: str, imdb_ratings_path: str, min_votes: in
     basics = pd.read_csv(imdb_basics_path, sep="\t", low_memory=False, na_values="\\N")
     ratings = pd.read_csv(imdb_ratings_path, sep="\t", low_memory=False, na_values="\\N")
     
-    # ADICIONE ESTAS DUAS LINHAS
-    st.write(f"Linhas carregadas do basics: {len(basics)}")
-    st.write(f"Linhas carregadas do ratings: {len(ratings)}")
-    
     # Merge the dataframes
     df = basics.merge(ratings, on="tconst", how="left")
     
-    # ADICIONE ESTA LINHA
-    st.write(f"Linhas após o merge: {len(df)}")
-    
+    # Adicionadas verificações de existência de colunas para evitar KeyError
     if "primaryTitle" in df.columns:
         df["primaryTitle"] = df["primaryTitle"].astype(str)
     
@@ -223,7 +217,8 @@ def carregar_series(imdb_basics_path: str, imdb_ratings_path: str, min_votes: in
         df["numVotes"] = pd.to_numeric(df["numVotes"], errors="coerce")
     else:
         df["numVotes"] = 0
-
+    
+    # O filtro por numVotes é a única forma de filtrar o dataset
     if "numVotes" in df.columns and min_votes and min_votes > 0:
         df = df[df["numVotes"] >= min_votes]
 
@@ -396,6 +391,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
