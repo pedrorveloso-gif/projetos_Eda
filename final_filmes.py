@@ -241,9 +241,9 @@ def construir_grafo(filmes: List[Filme], series: List[Serie]) -> GenreGraph:
 # 6) CAMINHOS DOS DADOS
 # =========================
 # **ALTERADO** - Agora aponta diretamente para o CSV descompactado
-FILMES_CSV = "movies_metadata.csv"
-IMDB_BASICS = "title.basics.min.tsv.gz"
-IMDB_RATINGS = "title.ratings.min.tsv.gz"
+FILMES_CSV = "archive_min.csv"
+IMDB_BASICS = "title.basics.min.tsv"
+IMDB_RATINGS = "title.ratings.min.tsv"
 
 # =========================
 # 7) UI
@@ -373,4 +373,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
