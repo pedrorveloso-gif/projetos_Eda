@@ -1,5 +1,5 @@
-# arquivo: filmes_git.py
-# Para rodar: streamlit run filmes_git.py
+# arquivo: recomendador_git.py
+# Para rodar: streamlit run recomendador_git.py
 
 import streamlit as st
 import pandas as pd
@@ -394,5 +394,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
