@@ -1,4 +1,3 @@
-
 # arquivo: recomendador_git.py
 # Para rodar: streamlit run recomendador_git.py
 
