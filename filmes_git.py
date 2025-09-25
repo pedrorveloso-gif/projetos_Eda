@@ -332,37 +332,89 @@ def main():
                 else:
                     st.warning("Nada encontrado para esse gênero nos filmes.")
 
-    else:  # Séries
-        rec_series = RecomendadorMidias(series)
+    # Seu código, a partir da seção de séries
+    # Seu código, a partir da seção de séries
 
-        st.subheader("📺 Recomendações de Séries")
-        modo = st.radio("Tipo de recomendação", ["Por título", "Por gênero"], key="modo_series")
-        n = st.slider("Quantidade", 1, 20, 5, key="n_series")
+else:  # Séries
+    rec_series = RecomendadorMidias(series)
 
-        if modo == "Por título":
-            # Certifique-se de que a lista de títulos não está vazia antes de exibir o selectbox
-            if series:
-                titulos = sorted([s.title for s in series])
-                tit = st.selectbox("Escolha uma série", titulos, key="sel_serie")
+    st.subheader("📺 Recomendações de Séries")
+    modo = st.radio("Tipo de recomendação", ["Por título", "Por gênero"], key="modo_series")
+    n = st.slider("Quantidade", 1, 20, 5, key="n_series")
 
-                # Encontre a série de forma mais segura
-                alvo_serie = next((s for s in series if s.title == tit), None)
+    if modo == "Por título":
+        if series:
+            titulos = sorted([s.title for s in series])
+            tit = st.selectbox("Escolha uma série", titulos, key="sel_serie")
+            alvo_serie = next((s for s in series if s.title == tit), None)
+        else:
+            st.warning("Não há séries para exibir.")
+            alvo_serie = None
+
+        if alvo_serie:
+            col1, col2 = st.columns(2)
+            if col1.button("Obter recomendações (simples)", key="btn_series_title"):
+                resultados = rec_series.recomendar(alvo_serie, n=n)
+                st.success(f"🎯 Baseado em: {alvo_serie.title}")
+                for r in resultados:
+                    st.write(r.exibir_info())
+
+            if col2.button("Explorar recursivo (2 níveis)", key="btn_series_rec"):
+                recs = recomendar_recursivo(alvo_serie, series, profundidade=2)
+                for r in recs[:n]:
+                    st.write(r.exibir_info())
+            
+            # ESTE BLOCO AGORA ESTÁ DENTRO DO IF, CORRIGINDO O ERRO
+            st.markdown("#### 🎬 Filmes parecidos (pelos mesmos gêneros)")
+            cross = recomendar_por_bfs(grafo, alvo_serie.genres[0] if alvo_serie.genres else "Drama", filmes, n=min(5, n))
+            if cross:
+                for c in cross: st.write(c.exibir_info())
             else:
-                st.warning("Não há séries para exibir.")
-                alvo_serie = None
+                st.caption("Sem filmes com gêneros compatíveis.")
 
-            if alvo_serie: # O resto do código só será executado se uma série for encontrada
-                col1, col2 = st.columns(2)
-                if col1.button("Obter recomendações (simples)", key="btn_series_title"):
-                    resultados = rec_series.recomendar(alvo_serie, n=n)
-                    st.success(f"🎯 Baseado em: {alvo_serie.title}")
-                    for r in resultados:
-                        st.write(r.exibir_info())
+    else:
+        generos = sorted({g for s in series for g in s.genres})
+        genero = st.selectbox("Escolha um gênero", generos, key="gen_series")
+        modo_gen = st.radio("Como recomendar por gênero?", ["Simples", "Via BFS (grafo)"], key="modo_gen_series")
 
-                if col2.button("Explorar recursivo (2 níveis)", key="btn_series_rec"):
-                    recs = recomendar_recursivo(alvo_serie, series, profundidade=2)
-                    for r in recs[:n]:
-                        st.write(r.exibir_info())
+        if st.button("Obter recomendações", key="btn_series_gen"):
+            if modo_gen == "Via BFS (grafo)":
+                resultados = recomendar_por_bfs(grafo, genero, series, n=n)
+            else:
+                resultados = rec_series.recomendar(genero, n=n)
+
+            if resultados:
+                for r in resultados: st.write(r.exibir_info())
+                st.markdown("#### 🎬 Filmes parecidos (mesmo gênero/BFS)")
+                rec_filmes = recomendar_por_bfs(grafo, genero, filmes, n=min(5, n))
+                if rec_filmes:
+                    for c in rec_filmes: st.write(c.exibir_info())
+                else:
+                    st.caption("Sem filmes desse gênero.")
+            else:
+                st.warning("Nada encontrado para esse gênero nas séries.")
+
+    else:
+        generos = sorted({g for s in series for g in s.genres})
+        genero = st.selectbox("Escolha um gênero", generos, key="gen_series")
+        modo_gen = st.radio("Como recomendar por gênero?", ["Simples", "Via BFS (grafo)"], key="modo_gen_series")
+
+        if st.button("Obter recomendações", key="btn_series_gen"):
+            if modo_gen == "Via BFS (grafo)":
+                resultados = recomendar_por_bfs(grafo, genero, series, n=n)
+            else:
+                resultados = rec_series.recomendar(genero, n=n)
+
+            if resultados:
+                for r in resultados: st.write(r.exibir_info())
+                st.markdown("#### 🎬 Filmes parecidos (mesmo gênero/BFS)")
+                rec_filmes = recomendar_por_bfs(grafo, genero, filmes, n=min(5, n))
+                if rec_filmes:
+                    for c in rec_filmes: st.write(c.exibir_info())
+                else:
+                    st.caption("Sem filmes desse gênero.")
+            else:
+                st.warning("Nada encontrado para esse gênero nas séries.")
 
                 st.markdown("#### 🎬 Filmes parecidos (pelos mesmos gêneros)")
                 cross = recomendar_por_bfs(grafo, alvo_serie.genres[0] if alvo_serie.genres else "Drama", filmes, n=min(5, n))
@@ -416,6 +468,7 @@ def main():
 if __name__ == "__main__":
 
     main()
+
 
 
 
