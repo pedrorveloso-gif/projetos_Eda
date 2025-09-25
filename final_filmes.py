@@ -250,9 +250,9 @@ def construir_grafo(filmes: List[Filme], series: List[Serie]) -> GenreGraph:
 # =========================
 # 6) CAMINHOS DOS DADOS
 # =========================
-ZIP_FILMES = r"C:/Users/pedro/OneDrive/Documentos/projeto eda/archive.zip"  # contém movies_metadata.csv
-IMDB_BASICS = r"C:/Users/pedro/OneDrive/Documentos/projeto eda/title.basics.tsv.gz"
-IMDB_RATINGS = r"C:/Users/pedro/OneDrive/Documentos/projeto eda/title.ratings.tsv.gz"
+FILMES_CSV = "archive_min.csv"
+IMDB_BASICS = "title.basics.min.tsv"
+IMDB_RATINGS = "title.ratings.min.tsv"
 
 # =========================
 # 7) UI
@@ -385,3 +385,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
