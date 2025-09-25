@@ -242,7 +242,6 @@ def carregar_series(imdb_basics_path: str, imdb_ratings_path: str, min_votes: in
         )
     return series
 
-@st.cache_data(show_spinner=False)
 def construir_grafo(filmes: List[Filme], series: List[Serie]) -> GenreGraph:
     G = GenreGraph()
     for m in filmes + series:
@@ -389,6 +388,7 @@ def main():
 if __name__ == "__main__":
 
     main()
+
 
 
 
