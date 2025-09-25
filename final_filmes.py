@@ -266,7 +266,7 @@ def main():
     )
 
     with st.spinner("Carregando dados..."):
-        filmes = carregar_filmes(ZIP_FILMES)
+        filmes = carregar_filmes(FILMES_CSV)
         series = carregar_series(IMDB_BASICS, IMDB_RATINGS, min_votes=500)
         grafo = construir_grafo(filmes, series)
 
@@ -385,4 +385,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
