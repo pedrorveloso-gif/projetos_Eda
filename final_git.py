@@ -1,5 +1,5 @@
-# arquivo: filmes_git.py
-# Para rodar: streamlit run filmes_git.py
+# arquivo: recomendador_git.py
+# Para rodar: streamlit run recomendador_git.py
 
 import streamlit as st
 import pandas as pd
@@ -198,8 +198,8 @@ def carregar_filmes(filmes_path: str) -> List[Filme]:
 
 @st.cache_data(show_spinner=False)
 def carregar_series(imdb_basics_path: str, imdb_ratings_path: str, min_votes: int = 500) -> List[Serie]:
-    basics = pd.read_csv(imdb_basics_path, sep="\t", low_memory=False, na_values="\\N")
-    ratings = pd.read_csv(imdb_ratings_path, sep="\t", low_memory=False, na_values="\\N")
+    basics = pd.read_csv(imdb_basics_path, sep="\t", low_memory=False, na_values="\\N", engine='python')
+    ratings = pd.read_csv(imdb_ratings_path, sep="\t", low_memory=False, na_values="\\N", engine='python')
     
     if "titleType" in basics.columns:
         basics = basics[basics["titleType"].isin(["tvSeries", "tvMiniSeries"])].copy()
