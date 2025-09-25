@@ -201,7 +201,6 @@ def carregar_series(imdb_basics_path: str, imdb_ratings_path: str, min_votes: in
     # Corrigido: remove compression="infer" já que os arquivos não estão mais .gz
     basics = pd.read_csv(imdb_basics_path, sep="\t", low_memory=False, na_values="\\N")
     ratings = pd.read_csv(imdb_ratings_path, sep="\t", low_memory=False, na_values="\\N")
-    basics = basics[basics["primaryTitle"].isin(["tvSeries", "tvMiniSeries"])].copy()
     df = basics.merge(ratings, on="tconst", how="left")
     df["primaryTitle"] = df["primaryTitle"].astype(str)
     df["averageRating"] = pd.to_numeric(df["averageRating"], errors="coerce")
@@ -375,4 +374,5 @@ def main():
 if __name__ == "__main__":
 
     main()
+
 
