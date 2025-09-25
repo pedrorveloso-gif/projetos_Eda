@@ -260,6 +260,11 @@ IMDB_RATINGS = "data/title.ratings.min.tsv"
 # =========================
 # 7) UI
 # =========================
+
+if st.sidebar.button("🧹 Limpar cache de dados"):
+    st.cache_data.clear()
+    st.success("Cache limpo. Clique em Rerun.")
+
 def main():
     st.title("🍿 Recomendador de Filmes & Séries")
 
@@ -393,4 +398,5 @@ def main():
                     st.warning("Nada encontrado para esse gênero nas séries.")
 
 if __name__ == "__main__":
+
     main()
