@@ -203,9 +203,6 @@ def carregar_series(imdb_basics_path: str, imdb_ratings_path: str, min_votes: in
     
     if "titleType" in basics.columns:
         basics = basics[basics["titleType"].isin(["tvSeries", "tvMiniSeries"])].copy()
-    else:
-        st.warning("A coluna 'titleType' não foi encontrada. O aplicativo não consegue filtrar por séries.")
-        return []
 
     df = basics.merge(ratings, on="tconst", how="left")
     
@@ -394,3 +391,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
