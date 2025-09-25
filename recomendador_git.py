@@ -1,5 +1,5 @@
-# arquivo: recomendador_git.py
-# Para rodar: streamlit run recomendador_git.py
+# arquivo: filmes_git.py
+# Para rodar: streamlit run filmes_git.py
 
 import streamlit as st
 import pandas as pd
@@ -203,6 +203,8 @@ def carregar_series(imdb_basics_path: str, imdb_ratings_path: str, min_votes: in
     
     if "titleType" in basics.columns:
         basics = basics[basics["titleType"].isin(["tvSeries", "tvMiniSeries"])].copy()
+    else:
+        st.warning("A coluna 'titleType' não foi encontrada. O aplicativo não consegue filtrar por séries.")
         return []
 
     df = basics.merge(ratings, on="tconst", how="left")
