@@ -274,8 +274,6 @@ def carregar_series(imdb_basics_path: str, imdb_ratings_path: str, min_votes: in
     basics = _read_any(imdb_basics_path, sep_hint="\t")
     ratings = _read_any(imdb_ratings_path, sep_hint="\t")
 
-    
-    st.warning(type()
     if "titleType" not in basics.columns:
         st.warning("Coluna 'titleType' ausente em basics.")
         return []
@@ -471,6 +469,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
