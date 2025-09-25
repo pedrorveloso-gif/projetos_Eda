@@ -340,9 +340,37 @@ def main():
         n = st.slider("Quantidade", 1, 20, 5, key="n_series")
 
         if modo == "Por título":
-            titulos = sorted([s.title for s in series])
-            tit = st.selectbox("Escolha uma série", titulos, key="sel_serie")
-            alvo_serie = next(s for s in series if s.title == tit)
+            # Certifique-se de que a lista de títulos não está vazia antes de exibir o selectbox
+            if series:
+                titulos = sorted([s.title for s in series])
+                tit = st.selectbox("Escolha uma série", titulos, key="sel_serie")
+
+                # Encontre a série de forma mais segura
+                alvo_serie = next((s for s in series if s.title == tit), None)
+            else:
+                st.warning("Não há séries para exibir.")
+                alvo_serie = None
+
+            if alvo_serie: # O resto do código só será executado se uma série for encontrada
+                col1, col2 = st.columns(2)
+                if col1.button("Obter recomendações (simples)", key="btn_series_title"):
+                    resultados = rec_series.recomendar(alvo_serie, n=n)
+                    st.success(f"🎯 Baseado em: {alvo_serie.title}")
+                    for r in resultados:
+                        st.write(r.exibir_info())
+
+                if col2.button("Explorar recursivo (2 níveis)", key="btn_series_rec"):
+                    recs = recomendar_recursivo(alvo_serie, series, profundidade=2)
+                    for r in recs[:n]:
+                        st.write(r.exibir_info())
+
+                st.markdown("#### 🎬 Filmes parecidos (pelos mesmos gêneros)")
+                cross = recomendar_por_bfs(grafo, alvo_serie.genres[0] if alvo_serie.genres else "Drama", filmes, n=min(5, n))
+                if cross:
+                    for c in cross: st.write(c.exibir_info())
+                else:
+                    st.caption("Sem filmes com gêneros compatíveis.")
+    
 
             col1, col2 = st.columns(2)
             if col1.button("Obter recomendações (simples)", key="btn_series_title"):
@@ -388,6 +416,7 @@ def main():
 if __name__ == "__main__":
 
     main()
+
 
 
 
