@@ -197,12 +197,19 @@ def carregar_filmes(filmes_path: str) -> List[Filme]:
     return filmes
 
 @st.cache_data(show_spinner=False)
-def carregar_series(imdb_basics_path: str, imdb_ratings_path: str, min_votes: int = 0) -> List[Serie]:
+def carregar_series(imdb_basics_path: str, imdb_ratings_path: str, min_votes: int = 500) -> List[Serie]:
     basics = pd.read_csv(imdb_basics_path, sep="\t", low_memory=False, na_values="\\N")
     ratings = pd.read_csv(imdb_ratings_path, sep="\t", low_memory=False, na_values="\\N")
     
+    # ADICIONE ESTAS DUAS LINHAS
+    st.write(f"Linhas carregadas do basics: {len(basics)}")
+    st.write(f"Linhas carregadas do ratings: {len(ratings)}")
+    
     # Merge the dataframes
     df = basics.merge(ratings, on="tconst", how="left")
+    
+    # ADICIONE ESTA LINHA
+    st.write(f"Linhas após o merge: {len(df)}")
     
     if "primaryTitle" in df.columns:
         df["primaryTitle"] = df["primaryTitle"].astype(str)
@@ -389,6 +396,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
