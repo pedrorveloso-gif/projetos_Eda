@@ -100,10 +100,7 @@ class RecomendadorMidias(Recomendavel):
 # 3) TABELA HASH + GRAFO + BFS
 # =========================
 class GenreGraph:
-    """
-    Grafo não direcionado de coocorrência de gêneros.
-    Usa dict[str, set[str]]: dict/set são TABELAS HASH em Python.
-    """
+    """Grafo não-direcionado de coocorrência de gêneros usando dict/set (hash)."""
     def __init__(self):
         self.adj: Dict[str, Set[str]] = defaultdict(set)
 
@@ -116,7 +113,6 @@ class GenreGraph:
                 self.adj[b].add(a)
 
     def bfs(self, start: str, max_depth: int = 2) -> List[Tuple[str, int]]:
-        """Busca em largura (BFS) a partir de um gênero."""
         start = start.lower()
         visitados: Set[str] = set([start])
         ordem: List[Tuple[str, int]] = []
@@ -149,23 +145,17 @@ def recomendar_por_bfs(grafo: GenreGraph, base_genero: str, universo: List[Midia
 # 4) RECURSÃO (demonstração simples)
 # =========================
 def recomendar_recursivo(midia_base: Midia, universo: List[Midia], profundidade: int, visitados: Set[str] = None) -> List[Midia]:
-    """
-    Explora recomendações por interseção de gêneros recursivamente até 'profundidade'.
-    """
     if visitados is None:
         visitados = set([midia_base.title.lower()])
     if profundidade == 0:
         return []
-
     rec_nivel = RecomendadorMidias(universo).recomendar(midia_base, n=5)
     rec_filtradas = [m for m in rec_nivel if m.title.lower() not in visitados]
     for m in rec_filtradas:
         visitados.add(m.title.lower())
-
     resultado = rec_filtradas[:]
     for m in rec_filtradas:
         resultado += recomendar_recursivo(m, universo, profundidade - 1, visitados)
-    
     seen, dedup = set(), []
     for x in resultado:
         if x.title not in seen:
@@ -174,12 +164,13 @@ def recomendar_recursivo(midia_base: Midia, universo: List[Midia], profundidade:
     return dedup
 
 # =========================
-# 5) LOADERS ROBUSTOS (compatíveis com pandas 2.x)
+# 5) LOADERS ROBUSTOS (pandas 2.x, IMDb, CSV/TSV/GZIP)
 # =========================
+IMDB_NA = ["", "NA", "NaN", r"\N"]  # r"\N" evita erro de unicodeescape
+
 def _read_any(path: str, sep_hint: str = "\t") -> pd.DataFrame:
     """
     Lê CSV/TSV (normal ou .gz) com opções seguras para pandas 2.x.
-    Trata \N do IMDb e linhas ruins.
     """
     # 1) tenta com separador sugerido
     try:
@@ -188,9 +179,9 @@ def _read_any(path: str, sep_hint: str = "\t") -> pd.DataFrame:
             sep=sep_hint,
             low_memory=False,
             encoding="utf-8",
-            na_values=["", "NA", "NaN", "\\N"],
-            on_bad_lines="skip",  # pandas 2.x
-            compression="infer"
+            na_values=IMDB_NA,
+            on_bad_lines="skip",
+            compression="infer",
         )
     except Exception:
         pass
@@ -202,37 +193,30 @@ def _read_any(path: str, sep_hint: str = "\t") -> pd.DataFrame:
             engine="python",
             low_memory=False,
             encoding="utf-8",
-            na_values=["", "NA", "NaN", "\\N"],
+            na_values=IMDB_NA,
             on_bad_lines="skip",
-            compression="infer"
+            compression="infer",
         )
     except Exception as e:
         raise RuntimeError(f"Falha ao ler arquivo '{path}': {e}")
 
 def _parse_genres_any(cell) -> List[str]:
-    """Aceita JSON do TMDB, string separada por vírgulas ou por pipes."""
-    if pd.isna(cell):
-        return []
+    """Aceita JSON (TMDB), string separada por vírgulas ou por pipes."""
+    if pd.isna(cell): return []
     s = str(cell).strip()
-    if not s:
-        return []
-    # JSON estilo TMDB: [{"id":..,"name":"Action"}, ...]
+    if not s: return []
+    # JSON estilo TMDB: [{"id":..,"name":"Action"}, ...] ou ["Action","Comedy"]
     try:
         val = ast.literal_eval(s)
         if isinstance(val, list):
-            # lista de dicts
             if val and isinstance(val[0], dict):
                 return [str(d.get("name", "")).strip() for d in val if d.get("name")]
-            # lista de strings
             return [str(x).strip() for x in val if str(x).strip()]
     except Exception:
         pass
     # "Action, Comedy" ou "Action|Comedy"
-    if "|" in s:
-        parts = s.split("|")
-    else:
-        parts = s.split(",")
-    return [p.strip() for p in parts if p.strip() and p.strip() != "\\N"]
+    parts = s.split("|") if "|" in s else s.split(",")
+    return [p.strip() for p in parts if p.strip() and p.strip() != r"\N"]
 
 def _first_existing(df: pd.DataFrame, candidates: List[str]) -> str | None:
     for c in candidates:
@@ -242,35 +226,24 @@ def _first_existing(df: pd.DataFrame, candidates: List[str]) -> str | None:
 
 @st.cache_data(show_spinner=False)
 def carregar_filmes(filmes_path: str) -> List[Filme]:
-    # Lê CSV de filmes (TMDB ou similar)
     df = _read_any(filmes_path, sep_hint=",")
-    # Normaliza nomes possíveis
-    title_col   = _first_existing(df, ["title", "original_title", "name"])
-    genres_col  = _first_existing(df, ["genres", "listed_in", "genre_names"])
-    rating_col  = _first_existing(df, ["vote_average", "rating", "averageRating", "score"])
-    date_col    = _first_existing(df, ["release_date", "year", "releaseYear"])
-    director_col= _first_existing(df, ["director", "diretor"])
+    title_col    = _first_existing(df, ["title", "original_title", "name"])
+    genres_col   = _first_existing(df, ["genres", "listed_in", "genre_names"])
+    rating_col   = _first_existing(df, ["vote_average", "rating", "averageRating", "score"])
+    date_col     = _first_existing(df, ["release_date", "year", "releaseYear"])
+    director_col = _first_existing(df, ["director", "diretor"])
 
     if title_col is None or genres_col is None:
-        # evita KeyError no dropna
         st.warning("Colunas obrigatórias não encontradas no CSV de filmes (title/genres).")
         return []
 
-    # reduz às colunas relevantes que EXISTEM
     keep = [c for c in [title_col, genres_col, rating_col, date_col, director_col] if c]
     df = df[keep].copy()
-
-    # limpa/parse de gêneros
     df["_genres_parsed"] = df[genres_col].apply(_parse_genres_any)
 
-    # ano
     def _year_from(x):
         s = str(x)
-        for k in ["", "0000"]:
-            if s in (None, "", k):
-                return None
         try:
-            # tenta YYYY-mm-dd
             if len(s) >= 4 and s[:4].isdigit():
                 return int(s[:4])
         except Exception:
@@ -278,14 +251,8 @@ def carregar_filmes(filmes_path: str) -> List[Filme]:
         return None
 
     df["_year"] = df[date_col].apply(_year_from) if date_col else None
+    df["_rating"] = pd.to_numeric(df[rating_col], errors="coerce").fillna(0.0) if rating_col else 0.0
 
-    # nota
-    if rating_col:
-        df["_rating"] = pd.to_numeric(df[rating_col], errors="coerce").fillna(0.0)
-    else:
-        df["_rating"] = 0.0
-
-    # remove linhas sem título ou sem gêneros parseados
     df = df.dropna(subset=[title_col]).copy()
     df = df[df["_genres_parsed"].apply(lambda g: len(g) > 0)]
 
@@ -307,43 +274,31 @@ def carregar_series(imdb_basics_path: str, imdb_ratings_path: str, min_votes: in
     basics = _read_any(imdb_basics_path, sep_hint="\t")
     ratings = _read_any(imdb_ratings_path, sep_hint="\t")
 
-    required_basics = ["tconst","primaryTitle","startYear","endYear","titleType","genres"]
-    required_ratings = ["tconst","averageRating","numVotes"]
-    for c in required_basics:
-        if c not in basics.columns:
-            st.warning(f"Coluna ausente em basics: {c}")
-    for c in required_ratings:
-        if c not in ratings.columns:
-            st.warning(f"Coluna ausente em ratings: {c}")
-
-    # Filtra somente séries/minisséries
-    if "titleType" in basics.columns:
-        basics = basics[basics["titleType"].isin(["tvSeries","tvMiniSeries"])].copy()
-    else:
+    if "titleType" not in basics.columns:
+        st.warning("Coluna 'titleType' ausente em basics.")
         return []
 
-    # Limpeza de tipos
+    basics = basics[basics["titleType"].isin(["tvSeries", "tvMiniSeries"])].copy()
+
     if "startYear" in basics.columns:
         basics["startYear"] = pd.to_numeric(basics["startYear"], errors="coerce")
     if "endYear" in basics.columns:
         basics["endYear"] = pd.to_numeric(basics["endYear"], errors="coerce")
 
-    # gêneros: "Action,Comedy"
     if "genres" in basics.columns:
-        basics["genres"] = basics["genres"].fillna("").replace("\\N", "").astype(str).apply(_parse_genres_any)
+        basics["genres"] = (
+            basics["genres"]
+            .fillna("")
+            .replace(r"\N", "", regex=False)
+            .astype(str)
+            .apply(_parse_genres_any)
+        )
 
     df = basics.merge(ratings, on="tconst", how="left")
-    if "averageRating" in df.columns:
-        df["averageRating"] = pd.to_numeric(df["averageRating"], errors="coerce")
-    else:
-        df["averageRating"] = 0.0
-    if "numVotes" in df.columns:
-        df["numVotes"] = pd.to_numeric(df["numVotes"], errors="coerce").fillna(0).astype("Int64")
-    else:
-        df["numVotes"] = 0
+    df["averageRating"] = pd.to_numeric(df.get("averageRating", 0.0), errors="coerce")
+    df["numVotes"] = pd.to_numeric(df.get("numVotes", 0), errors="coerce").fillna(0).astype("Int64")
 
-    # mínimo de votos
-    if min_votes and "numVotes" in df.columns:
+    if min_votes:
         df = df[df["numVotes"] >= int(min_votes)]
 
     series: List[Serie] = []
@@ -385,17 +340,16 @@ def main():
         ["Filmes", "Séries"], horizontal=True
     )
 
-    # Verifica existência dos arquivos para mensagens mais claras
-    for p in [FILMES_CSV, IMDB_BASICS, IMDB_RATINGS]:
-        if not os.path.exists(p):
-            st.warning(f"Arquivo não encontrado: `{p}`. Verifique paths no deploy.")
+    # Mensagem clara se faltar arquivo no deploy
+    missing = [p for p in [FILMES_CSV, IMDB_BASICS, IMDB_RATINGS] if not os.path.exists(p)]
+    if missing:
+        st.warning("Arquivos ausentes: " + ", ".join(f"`{m}`" for m in missing))
 
     with st.spinner("Carregando dados..."):
         filmes = carregar_filmes(FILMES_CSV)
         series = carregar_series(IMDB_BASICS, IMDB_RATINGS, min_votes=500)
         grafo = construir_grafo(filmes, series)
 
-    # --- bloco comum: painel do grafo ---
     with st.expander("🔎 Visualização lógica do grafo de gêneros (BFS)"):
         todos_generos = sorted({g for m in filmes+series for g in m.genres}) or ["Drama"]
         genero_seed = st.selectbox("Gênero inicial", todos_generos)
@@ -515,6 +469,7 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 
 
