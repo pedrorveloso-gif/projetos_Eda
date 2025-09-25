@@ -1,5 +1,5 @@
-# arquivo: app_recomendador.py
-# Para rodar: streamlit run app_recomendador.py
+# arquivo: filmes_git.py
+# Para rodar: streamlit run filmes_git.py
 
 import streamlit as st
 import pandas as pd
@@ -14,7 +14,7 @@ from collections import deque, defaultdict
 st.set_page_config(page_title="Recomendador de Filmes & Séries", layout="centered")
 
 # =========================
-# 1) MODELO DE DADOS (Herança, Polimorfismo, Encapsulamento)
+# 1) MODELO DE DADOS
 # =========================
 class Midia(ABC):
     def __init__(self, title: str, genres: List[str], vote_average: float):
@@ -201,10 +201,8 @@ def carregar_series(imdb_basics_path: str, imdb_ratings_path: str, min_votes: in
     basics = pd.read_csv(imdb_basics_path, sep="\t", low_memory=False, na_values="\\N")
     ratings = pd.read_csv(imdb_ratings_path, sep="\t", low_memory=False, na_values="\\N")
     
-    # Merge the dataframes
     df = basics.merge(ratings, on="tconst", how="left")
     
-    # Adicionadas verificações de existência de colunas para evitar KeyError
     if "primaryTitle" in df.columns:
         df["primaryTitle"] = df["primaryTitle"].astype(str)
     
@@ -217,8 +215,7 @@ def carregar_series(imdb_basics_path: str, imdb_ratings_path: str, min_votes: in
         df["numVotes"] = pd.to_numeric(df["numVotes"], errors="coerce")
     else:
         df["numVotes"] = 0
-    
-    # O filtro por numVotes é a única forma de filtrar o dataset
+
     if "numVotes" in df.columns and min_votes and min_votes > 0:
         df = df[df["numVotes"] >= min_votes]
 
@@ -230,12 +227,12 @@ def carregar_series(imdb_basics_path: str, imdb_ratings_path: str, min_votes: in
     for _, r in df.iterrows():
         series.append(
             Serie(
-                tconst=r["tconst"],
+                tconst=r.get("tconst"),
                 title=r.get("primaryTitle"),
                 genres=split_gen(r.get("genres")),
                 vote_average=r.get("averageRating", 0),
-                start_year=int(r["startYear"]) if pd.notna(r.get("startYear")) else None,
-                end_year=int(r["endYear"]) if pd.notna(r.get("endYear")) else None,
+                start_year=int(r.get("startYear")) if pd.notna(r.get("startYear")) else None,
+                end_year=int(r.get("endYear")) if pd.notna(r.get("endYear")) else None,
                 num_votes=r.get("numVotes"),
             )
         )
@@ -359,7 +356,6 @@ def main():
                     for r in recs[:n]:
                         st.write(r.exibir_info())
                 
-                # ESTE BLOCO AGORA ESTÁ DENTRO DO IF, CORRIGINDO O ERRO
                 st.markdown("#### 🎬 Filmes parecidos (pelos mesmos gêneros)")
                 cross = recomendar_por_bfs(grafo, alvo_serie.genres[0] if alvo_serie.genres else "Drama", filmes, n=min(5, n))
                 if cross:
@@ -391,8 +387,6 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
 
 
 
